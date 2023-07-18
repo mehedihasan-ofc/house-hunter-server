@@ -1,14 +1,14 @@
 const express = require('express');
-const app = express()
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const app = express()
 require('dotenv').config();
 const port = process.env.PORT || 5000;
 
 // middleware
 app.use(cors());
-app.use(express());
+app.use(express.json());
 
 // ========================================================================>
 const { MongoClient, ServerApiVersion } = require('mongodb');
@@ -31,18 +31,85 @@ async function run() {
     //===> collection
     const sliderCollection = client.db('houseHunterDB').collection('sliders');
     const houseCollection = client.db('houseHunterDB').collection('houses');
+    const userCollection = client.db('houseHunterDB').collection('users');
 
-    // houses data
+    //--> houses data
     app.get('/sliders', async (req, res) => {
       const result = await sliderCollection.find().toArray();
       res.send(result);
     })
 
-    // houses data
+    //--> houses data
     app.get('/houses', async (req, res) => {
       const result = await houseCollection.find().toArray();
       res.send(result);
     })
+
+    // Assuming you have a POST endpoint '/register' using Express.js
+    app.post('/register', async (req, res) => {
+      const user = req.body;
+      const { fullName, email, password, phoneNumber, role } = user;
+
+      // Check if the user already exists with the same username or email
+      const existingUser = await userCollection.findOne({
+        $or: [{ fullName }, { email }],
+      });
+
+      if (existingUser) {
+        return res.status(400).send({ message: 'User already exists' });
+      }
+
+      // Hash the password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Generate a JWT
+      const token = jwt.sign({ email }, process.env.SECRET_KEY, { expiresIn: '7d' });
+
+      // Store the user data in the MongoDB collection
+      const result = await userCollection.insertOne({
+        fullName,
+        email,
+        password: hashedPassword,
+        phoneNumber,
+        role,
+        token
+      });
+
+      res.send({ result, email, token });
+
+      // res.send('User registered successfully');
+    });
+
+    // Assuming you have a POST endpoint '/login' using Express.js
+    app.post('/login', async (req, res) => {
+      const { email, password } = req.body;
+
+      // Retrieve the user's data from the MongoDB collection
+      const user = await userCollection.findOne({ email });
+
+      if (!user) {
+        return res.status(404).send('User not found');
+      }
+
+      // Compare the stored hashed password with the provided password
+      const passwordMatch = await bcrypt.compare(password, user.password);
+
+      if (!passwordMatch) {
+        return res.status(401).send({message: 'Invalid password'});
+      }
+
+      // Generate a new JWT
+      const token = jwt.sign({ email }, process.env.SECRET_KEY, { expiresIn: '7d' });
+
+      // Update the user's token in the database
+      const result = await userCollection.updateOne(
+        { email },
+        { $set: { token } }
+      );
+
+      res.send({ result, email, token });
+    });
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
