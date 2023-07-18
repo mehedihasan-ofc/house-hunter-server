@@ -27,9 +27,16 @@ async function run() {
     await client.connect();
 
     //===> collection
+    const sliderCollection = client.db('houseHunterDB').collection('sliders');
     const houseCollection = client.db('houseHunterDB').collection('houses');
 
-    // slider data
+    // houses data
+    app.get('/sliders', async (req, res) => {
+      const result = await sliderCollection.find().toArray();
+      res.send(result);
+    })
+
+    // houses data
     app.get('/houses', async (req, res) => {
       const result = await houseCollection.find().toArray();
       res.send(result);
