@@ -129,6 +129,27 @@ async function run() {
       res.send({ result, email, token });
     });
 
+    // Assuming you have a POST endpoint '/logout' using Express.js
+    app.post('/logout', async (req, res) => {
+      const token = req.body.token;
+
+      // Find the user in the MongoDB collection based on the token
+      const user = await userCollection.findOne({ token });
+
+      if (!user) {
+        return res.status(404).send('User not found');
+      }
+
+      // Update the user's token to an empty value or remove it from the user document
+      const result = await userCollection.updateOne(
+        { _id: user._id },
+        { $unset: { token: 1 } }
+      );
+
+      res.send(result);
+    });
+
+
     app.get('/house-owner', verifyJWT, async (req, res) => {
       const email = req.query.email;
       if (req.decoded.email !== email) {
