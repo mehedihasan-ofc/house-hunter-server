@@ -30,7 +30,7 @@ const verifyJWT = (req, res, next) => {
 }
 
 // ========================================================================>
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.d9zindd.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -167,6 +167,32 @@ async function run() {
     app.post('/houses', verifyJWT, async (req, res) => {
       const newHouse = req.body;
       const result = await houseCollection.insertOne(newHouse);
+      res.send(result);
+    })
+
+    app.delete('/houses/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await houseCollection.deleteOne(query);
+      res.send(result);
+    })
+
+    app.get('/house-edit/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await houseCollection.findOne(query);
+      res.send(result);
+    })
+
+    app.put('/houses-update/:id', async (req, res) => {
+      const houseId = req.params.id;
+      const updatedData = req.body;
+
+      const result = await houseCollection.updateOne(
+        { _id: new ObjectId(houseId) },
+        { $set: updatedData }
+      );
+
       res.send(result);
     })
 
